@@ -1,12 +1,23 @@
 body{
+ margin:0;
  background:black;
  color:#0f0;
  font-family:monospace;
  text-align:center;
 }
 
+canvas{
+ position:fixed;
+ top:0;
+ left:0;
+ z-index:-1;
+}
+
 .box{
  margin-top:80px;
+ background:rgba(0,0,0,0.8);
+ padding:20px;
+ border:1px solid #0f0;
 }
 
 input,button{

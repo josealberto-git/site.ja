@@ -8,45 +8,55 @@
 
 <body>
 
+<canvas id="matrix"></canvas>
+
 <div id="loginBox" class="box">
 <h1>José Alberto😎</h1>
 
 <input id="email" placeholder="Email"><br>
 <input id="senha" type="password" placeholder="Senha"><br>
 
-<button onclick="login()">Entrar</button>
-<button onclick="register()">Criar conta</button>
-<button onclick="reset()">Esqueci senha</button>
+<button onclick="login()">🔐 Entrar</button>
 
+<p>Não tem conta?</p>
+<button onclick="register()">📝 Criar conta</button>
+
+<button onclick="reset()">🔑 Esqueci senha</button>
+
+<div>
 <button onclick="abrirSuporte()">📩 Suporte</button>
-<button onclick="pedirReset()">🔑 Pedir acesso</button>
+<button onclick="pedirReset()">👑 Pedir acesso</button>
+</div>
 </div>
 
 <div id="app" class="box" style="display:none">
 
 <h2>Painel</h2>
 <p id="info"></p>
+<p>🌐 IP: <span id="ip"></span></p>
 
 <button onclick="logout()">Sair</button>
 
+<!-- DRIVE -->
 <h3>☁️ Drive</h3>
 <input type="file" id="fileInput">
 <button onclick="upload()">Upload</button>
 <ul id="arquivos"></ul>
 
+<!-- SUPORTE -->
 <h3>📩 Suporte</h3>
 <button onclick="enviarSuporte()">Enviar</button>
 <ul id="minhasMsgs"></ul>
 
+<!-- ADMIN -->
 <h3 id="adminArea" style="display:none">👑 Admin</h3>
 
-<h4>Usuários</h4>
 <ul id="lista"></ul>
 
-<h4>Mensagens</h4>
+<h3>📩 Suporte Admin</h3>
 <ul id="msgs"></ul>
 
-<h4>Reset</h4>
+<h3>🔑 Reset</h3>
 <ul id="resetList"></ul>
 
 </div>

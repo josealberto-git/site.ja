@@ -41,6 +41,37 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
 
+// 👑 CRIAR MASTER
+async function criarMaster(){
+ try{
+  let cred = await createUserWithEmailAndPassword(auth,"master@admin.com","123456");
+
+  await setDoc(doc(db,"users",cred.user.uid),{
+   email:"master@admin.com",
+   tipo:"master"
+  });
+ }catch(e){}
+}
+criarMaster();
+
+// MATRIX
+const c=document.getElementById("matrix");
+const ctx=c.getContext("2d");
+c.height=innerHeight;c.width=innerWidth;
+let letters="01";let drops=[];
+for(let i=0;i<c.width/10;i++)drops[i]=1;
+setInterval(()=>{
+ ctx.fillStyle="rgba(0,0,0,0.05)";
+ ctx.fillRect(0,0,c.width,c.height);
+ ctx.fillStyle="#0f0";
+ for(let i=0;i<drops.length;i++){
+  let t=letters[Math.floor(Math.random()*2)];
+  ctx.fillText(t,i*10,drops[i]*10);
+  if(drops[i]*10>c.height) drops[i]=0;
+  drops[i]++;
+ }
+},33);
+
 // LOGIN
 window.login = async ()=>{
  try{
@@ -51,13 +82,18 @@ window.login = async ()=>{
 
   info.innerText = cred.user.email;
 
+  // IP
+  fetch("https://api.ipify.org?format=json")
+  .then(r=>r.json())
+  .then(d=>ip.innerText=d.ip);
+
   listarArquivos();
   ouvirMinhasMsgs();
 
   let snap = await getDoc(doc(db,"users",cred.user.uid));
   let data = snap.data();
 
-  if(data?.tipo==="admin" || data?.tipo==="master"){
+  if(data?.tipo==="admin"||data?.tipo==="master"){
    adminArea.style.display="block";
    listarUsuarios();
    ouvirAdmin();
@@ -85,10 +121,7 @@ window.register = async ()=>{
 window.reset = ()=> sendPasswordResetEmail(auth,email.value);
 
 // LOGOUT
-window.logout = ()=>{
- signOut(auth);
- location.reload();
-};
+window.logout = ()=>{ signOut(auth); location.reload(); }
 
 // DRIVE
 window.upload = async ()=>{
@@ -128,7 +161,7 @@ window.del = async (path)=>{
 
 // SUPORTE LOGIN
 window.abrirSuporte = async ()=>{
- let e = prompt("Seu email:");
+ let e = prompt("Email:");
  let m = prompt("Mensagem:");
 
  if(!m) return;
@@ -139,29 +172,21 @@ window.abrirSuporte = async ()=>{
   resposta:"",
   status:"pendente"
  });
-
- alert("Mensagem enviada");
 };
 
 // PEDIDO RESET
 window.pedirReset = async ()=>{
- let e = prompt("Seu email");
-
- if(!e) return;
+ let e = prompt("Email");
 
  await addDoc(collection(db,"reset"),{
   email:e,
   status:"pendente"
  });
-
- alert("Pedido enviado");
 };
 
 // SUPORTE USER
 window.enviarSuporte = async ()=>{
  let msg = prompt("Mensagem:");
- if(!msg) return;
-
  let user = auth.currentUser;
 
  await addDoc(collection(db,"suporte"),{
@@ -181,7 +206,7 @@ function ouvirMinhasMsgs(){
    let m=doc.data();
    if(m.email===auth.currentUser.email){
     let li=document.createElement("li");
-    li.innerHTML = m.mensagem+"<br>👑 "+(m.resposta||"aguardando");
+    li.innerHTML=m.mensagem+"<br>👑 "+(m.resposta||"aguardando");
     minhasMsgs.appendChild(li);
    }
   });
@@ -221,8 +246,6 @@ function ouvirAdmin(){
 
 window.resp = async (id)=>{
  let r = prompt("Resposta:");
- if(!r) return;
-
  await updateDoc(doc(db,"suporte",id),{
   resposta:r,
   status:"respondido"
@@ -251,6 +274,4 @@ window.aprovar = async (id)=>{
  await updateDoc(doc(db,"reset",id),{
   status:"aprovado"
  });
-
- alert("Reset aprovado");
 };
