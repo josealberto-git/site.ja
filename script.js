@@ -1,277 +1,159 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+let usuarios = JSON.parse(localStorage.getItem("usuarios")) || [];
+let msgs = JSON.parse(localStorage.getItem("msgs")) || [];
+let resets = JSON.parse(localStorage.getItem("resets")) || [];
+let arquivos = JSON.parse(localStorage.getItem("arquivos")) || [];
 
-import {
- getAuth,
- signInWithEmailAndPassword,
- createUserWithEmailAndPassword,
- signOut,
- sendPasswordResetEmail
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+let logado = null;
 
-import {
- getFirestore,
- doc,
- setDoc,
- getDoc,
- collection,
- getDocs,
- addDoc,
- onSnapshot,
- updateDoc
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-
-import {
- getStorage,
- ref,
- uploadBytes,
- listAll,
- getDownloadURL,
- deleteObject
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
-
-// CONFIG FIREBASE
-const firebaseConfig = {
- apiKey:"SUA_KEY",
- authDomain:"SEU_DOMINIO",
- projectId:"SEU_ID"
-};
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-const storage = getStorage(app);
-
-// 👑 CRIAR MASTER
-async function criarMaster(){
- try{
-  let cred = await createUserWithEmailAndPassword(auth,"master@admin.com","123456");
-
-  await setDoc(doc(db,"users",cred.user.uid),{
-   email:"master@admin.com",
-   tipo:"master"
-  });
- }catch(e){}
+// 👑 MASTER FIXO
+if(!usuarios.find(u=>u.user==="master")){
+ usuarios.push({user:"master",pass:"123",tipo:"master"});
+ salvar();
 }
-criarMaster();
 
-// MATRIX
-const c=document.getElementById("matrix");
-const ctx=c.getContext("2d");
-c.height=innerHeight;c.width=innerWidth;
-let letters="01";let drops=[];
-for(let i=0;i<c.width/10;i++)drops[i]=1;
-setInterval(()=>{
- ctx.fillStyle="rgba(0,0,0,0.05)";
- ctx.fillRect(0,0,c.width,c.height);
- ctx.fillStyle="#0f0";
- for(let i=0;i<drops.length;i++){
-  let t=letters[Math.floor(Math.random()*2)];
-  ctx.fillText(t,i*10,drops[i]*10);
-  if(drops[i]*10>c.height) drops[i]=0;
-  drops[i]++;
- }
-},33);
+function salvar(){
+ localStorage.setItem("usuarios",JSON.stringify(usuarios));
+ localStorage.setItem("msgs",JSON.stringify(msgs));
+ localStorage.setItem("resets",JSON.stringify(resets));
+ localStorage.setItem("arquivos",JSON.stringify(arquivos));
+}
 
 // LOGIN
-window.login = async ()=>{
- try{
-  let cred = await signInWithEmailAndPassword(auth,email.value,senha.value);
+function login(){
+ let u=user.value;
+ let p=pass.value;
 
+ let ok = usuarios.find(x=>x.user===u && x.pass===p);
+
+ if(ok){
+  logado=ok;
   loginBox.style.display="none";
   app.style.display="block";
+  info.innerText="👤 "+ok.user;
 
-  info.innerText = cred.user.email;
+  carregar();
 
-  // IP
-  fetch("https://api.ipify.org?format=json")
-  .then(r=>r.json())
-  .then(d=>ip.innerText=d.ip);
-
-  listarArquivos();
-  ouvirMinhasMsgs();
-
-  let snap = await getDoc(doc(db,"users",cred.user.uid));
-  let data = snap.data();
-
-  if(data?.tipo==="admin"||data?.tipo==="master"){
+  if(ok.tipo==="master"){
    adminArea.style.display="block";
-   listarUsuarios();
-   ouvirAdmin();
-   ouvirReset();
+   painelAdmin();
   }
 
- }catch(e){
-  alert("Erro: "+e.message);
- }
-};
+ }else alert("Login errado");
+}
 
 // REGISTER
-window.register = async ()=>{
- let cred = await createUserWithEmailAndPassword(auth,email.value,senha.value);
+function register(){
+ let u=user.value;
+ let p=pass.value;
 
- await setDoc(doc(db,"users",cred.user.uid),{
-  email:email.value,
-  tipo:"cliente"
- });
+ usuarios.push({user:u,pass:p,tipo:"cliente"});
+ salvar();
 
  alert("Conta criada!");
-};
+}
 
-// RESET FIREBASE
-window.reset = ()=> sendPasswordResetEmail(auth,email.value);
+// RESET
+function reset(){
+ alert("Offline: fale com o admin");
+}
 
 // LOGOUT
-window.logout = ()=>{ signOut(auth); location.reload(); }
+function logout(){
+ location.reload();
+}
 
 // DRIVE
-window.upload = async ()=>{
- let file = fileInput.files[0];
- let user = auth.currentUser;
+function upload(){
+ let nome=fileName.value;
 
- let path = ref(storage,"arquivos/"+user.uid+"/"+file.name);
- await uploadBytes(path,file);
+ arquivos.push({user:logado.user,nome});
+ salvar();
 
- listarArquivos();
-};
+ carregar();
+}
 
-async function listarArquivos(){
- let user = auth.currentUser;
- let pasta = ref(storage,"arquivos/"+user.uid);
-
- let listaFiles = await listAll(pasta);
+function carregar(){
+ arquivosList = arquivos.filter(a=>a.user===logado.user);
 
  arquivos.innerHTML="";
-
- listaFiles.items.forEach(async file=>{
-  let url = await getDownloadURL(file);
-
+ arquivosList.forEach(a=>{
   let li=document.createElement("li");
-  li.innerHTML = `${file.name}
-  <a href="${url}" target="_blank">📥</a>
-  <button onclick="del('${file.fullPath}')">🗑️</button>`;
-
+  li.innerText=a.nome;
   arquivos.appendChild(li);
  });
-}
 
-window.del = async (path)=>{
- await deleteObject(ref(storage,path));
- listarArquivos();
-};
+ // mensagens user
+ msgsUser.innerHTML="";
+ msgs.filter(m=>m.user===logado.user).forEach(m=>{
+  let li=document.createElement("li");
+  li.innerText=m.msg+" | resp: "+(m.resp||"aguardando");
+  msgsUser.appendChild(li);
+ });
+}
 
 // SUPORTE LOGIN
-window.abrirSuporte = async ()=>{
- let e = prompt("Email:");
- let m = prompt("Mensagem:");
-
- if(!m) return;
-
- await addDoc(collection(db,"suporte"),{
-  email:e,
-  mensagem:m,
-  resposta:"",
-  status:"pendente"
- });
-};
-
-// PEDIDO RESET
-window.pedirReset = async ()=>{
- let e = prompt("Email");
-
- await addDoc(collection(db,"reset"),{
-  email:e,
-  status:"pendente"
- });
-};
-
-// SUPORTE USER
-window.enviarSuporte = async ()=>{
- let msg = prompt("Mensagem:");
- let user = auth.currentUser;
-
- await addDoc(collection(db,"suporte"),{
-  uid:user.uid,
-  email:user.email,
-  mensagem:msg,
-  resposta:"",
-  status:"pendente"
- });
-};
-
-// VER RESPOSTA
-function ouvirMinhasMsgs(){
- onSnapshot(collection(db,"suporte"), snap=>{
-  minhasMsgs.innerHTML="";
-  snap.forEach(doc=>{
-   let m=doc.data();
-   if(m.email===auth.currentUser.email){
-    let li=document.createElement("li");
-    li.innerHTML=m.mensagem+"<br>👑 "+(m.resposta||"aguardando");
-    minhasMsgs.appendChild(li);
-   }
-  });
- });
+function suporteLogin(){
+ let m=prompt("Mensagem");
+ msgs.push({user:"login",msg:m});
+ salvar();
 }
 
-// ADMIN USERS
-async function listarUsuarios(){
- let snap = await getDocs(collection(db,"users"));
- lista.innerHTML="";
+// PEDIR RESET
+function pedirReset(){
+ let u=prompt("Usuário");
+ resets.push({user:u,status:"pendente"});
+ salvar();
+}
 
- snap.forEach(doc=>{
-  let u = doc.data();
+// USER MSG
+function enviarMsg(){
+ let m=prompt("Mensagem");
+ msgs.push({user:logado.user,msg:m});
+ salvar();
+ carregar();
+}
+
+// ADMIN
+function painelAdmin(){
+ lista.innerHTML="";
+ usuarios.forEach(u=>{
   let li=document.createElement("li");
-  li.innerText = u.email+" ("+u.tipo+")";
+  li.innerText=u.user+" ("+u.tipo+")";
   lista.appendChild(li);
  });
-}
 
-// ADMIN SUPORTE
-function ouvirAdmin(){
- onSnapshot(collection(db,"suporte"), snap=>{
-  msgs.innerHTML="";
-  snap.forEach(doc=>{
-   let m=doc.data();
+ // msgs
+ msgsAdmin.innerHTML="";
+ msgs.forEach((m,i)=>{
+  let li=document.createElement("li");
+  li.innerHTML=`
+  ${m.user}: ${m.msg}
+  <button onclick="resp(${i})">Responder</button>
+  `;
+  msgsAdmin.appendChild(li);
+ });
 
-   let li=document.createElement("li");
-   li.innerHTML = `
-   ${m.email}: ${m.mensagem}
-   <button onclick="resp('${doc.id}')">Responder</button>
-   `;
-
-   msgs.appendChild(li);
-  });
+ // reset
+ resetList.innerHTML="";
+ resets.forEach((r,i)=>{
+  let li=document.createElement("li");
+  li.innerHTML=`
+  ${r.user} [${r.status}]
+  <button onclick="aprovar(${i})">OK</button>
+  `;
+  resetList.appendChild(li);
  });
 }
 
-window.resp = async (id)=>{
- let r = prompt("Resposta:");
- await updateDoc(doc(db,"suporte",id),{
-  resposta:r,
-  status:"respondido"
- });
-};
-
-// ADMIN RESET
-function ouvirReset(){
- onSnapshot(collection(db,"reset"), snap=>{
-  resetList.innerHTML="";
-  snap.forEach(doc=>{
-   let r=doc.data();
-
-   let li=document.createElement("li");
-   li.innerHTML = `
-   ${r.email} [${r.status}]
-   <button onclick="aprovar('${doc.id}')">Aprovar</button>
-   `;
-
-   resetList.appendChild(li);
-  });
- });
+function resp(i){
+ let r=prompt("Resposta");
+ msgs[i].resp=r;
+ salvar();
+ painelAdmin();
 }
 
-window.aprovar = async (id)=>{
- await updateDoc(doc(db,"reset",id),{
-  status:"aprovado"
- });
-};
+function aprovar(i){
+ resets[i].status="aprovado";
+ salvar();
+ painelAdmin();
+}
